@@ -6,7 +6,7 @@ This is a syslog parser for the Go programming language.
 Installing
 ----------
 
-go get github.com/jeromer/syslogparser
+go get github.com/MissRain/syslogparser
 
 Supported RFCs
 --------------
