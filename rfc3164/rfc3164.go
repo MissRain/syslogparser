@@ -17,6 +17,7 @@ type Parser struct {
 	location      *time.Location
 	hostname      string
 	ParsePriority bool
+    skipTag       bool
 }
 
 type header struct {
@@ -62,8 +63,16 @@ func (p *Parser) Parse() error {
 		}
 	}
 
+    tcursor := p.cursor
 	hdr, err := p.parseHeader()
-	if err != nil {
+    if err == syslogparser.ErrTimestampUnknownFormat {
+        // RFC3164 sec 4.3.2.
+        hdr.timestamp = time.Now().Round(time.Second)
+        // No tag processing should be done
+        p.skipTag = true
+        // Reset cursor for content read
+        p.cursor = tcursor
+	} else if err != nil {
 		return err
 	}
 
@@ -126,9 +135,12 @@ func (p *Parser) parsemessage() (rfc3164message, error) {
 	msg := rfc3164message{}
 	var err error
 
-	tag, err := p.parseTag()
-	if err != nil {
-		return msg, err
+    if !p.skipTag {
+        tag, err := p.parseTag()
+        if err != nil {
+            return msg, err
+        }
+        msg.tag = tag
 	}
 
 	content, err := p.parseContent()
@@ -136,7 +148,6 @@ func (p *Parser) parsemessage() (rfc3164message, error) {
 		return msg, err
 	}
 
-	msg.tag = tag
 	msg.content = content
 
 	return msg, err
